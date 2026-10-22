@@ -4,6 +4,16 @@ Portal interno para gerir as contas das plataformas da Mosaic Labs (Lessonara pr
 
 Mesma base do Lessonara: Next.js 16.4, React 19.3, Supabase (`@supabase/ssr`), Tailwind 4, Resend e Vercel.
 
+## Deploy Vercel — 22/10/2026
+
+- Projeto `mosaic-labs-admin`, repositório `mosaiclabsco/admin`, branch de produção `main`.
+- Endereço de produção: https://mosaic-labs-admin.vercel.app. A proteção de deployment da Vercel foi preservada; acesso ao painel também exige OTP e allowlist do admin.
+- Next.js explícito, Node 24, instalação `pnpm install --frozen-lockfile`, build `pnpm build` e funções em São Paulo (`gru1`).
+- Oito variáveis configuradas somente em Production: URL/chave publishable do admin, secret key do admin, URL/secret key do Lessonara, Resend, remetente e cron. As chaves privadas e o cron são do tipo Sensitive. Preview não recebe credenciais de produção.
+- Cron diário em `/api/cron/health`, autorizado por segredo exclusivo deste projeto. O Auth administrativo aponta para a URL de produção e mantém cadastro público desligado.
+- Recebimento de suporte por email ainda exige domínio/MX de recebimento e webhook Resend com `RESEND_WEBHOOK_SECRET`. A rota responde 503 enquanto não configurada; o envio de OTP usa a chave de envio existente. Não criar um segredo fictício apenas para preencher a variável.
+- As seções locais abaixo também documentam os testes anteriores à publicação; a instância em `127.0.0.1:3100` continua disponível para desenvolvimento.
+
 ## Decisões
 
 **Multiplataforma.** A plataforma fica na URL: `/{plataforma}/{seção}`, com `all` como visão consolidada. Um seletor no topo troca a plataforma e mantém a seção (`/lessonara/billing` → `/invoicy/billing`). Plataformas novas são cadastradas em **/platforms**, sem código.
