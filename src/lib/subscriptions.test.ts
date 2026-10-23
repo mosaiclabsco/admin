@@ -15,3 +15,9 @@ it("rejects invalid days, money and dates", () => {
   expect(() => subscriptionQuote("2026-10-23", 10, -1, 2)).toThrow();
   expect(() => subscriptionQuote("2026-02-31", 10, 1, 2)).toThrow();
 });
+
+it("keeps both amounts equal to the monthly fee and an equal-price change at zero on half-cent boundaries", () => {
+  const q = subscriptionQuote("2026-04-25", 10, 4999, 4999);
+  expect(q).toMatchObject({ totalDays: 30, usedDays: 15, currentUsed: 2500, currentRemaining: 2499, nextUsed: 2500, nextRemaining: 2499, difference: 0 });
+  expect(q.nextUsed + q.nextRemaining).toBe(q.nextPrice);
+});

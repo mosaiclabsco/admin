@@ -15,7 +15,7 @@ export function subscriptionQuote(today: string, billingDay: number, currentPric
   const currentUsed = Math.round(currentPrice * usedDays / totalDays);
   const currentRemaining = currentPrice - currentUsed;
   const nextUsed = Math.round(nextPrice * usedDays / totalDays);
-  const nextRemaining = Math.round(nextPrice * remainingDays / totalDays);
+  const nextRemaining = nextPrice - nextUsed;
   return { today, cycleStart: start, effectiveOn: end, totalDays, usedDays, remainingDays, currentPrice, nextPrice, currentUsed, currentRemaining, nextUsed, nextRemaining, difference: nextRemaining - currentRemaining };
 }
 export type SubscriptionChange = {

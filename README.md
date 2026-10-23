@@ -191,7 +191,7 @@ Tema claro fixo, tipografia de sistema em títulos, tabelas e formulários. `Ove
 
 ### Troca de assinatura e proporcionalidade
 
-A troca de plano ou de valor personalizado é agendada para a próxima renovação. A prévia mostra início/fim do ciclo, dias reais usados/restantes, mensalidades, valores proporcionais de ambos os planos e a diferença caso a troca fosse hoje. O dia atual entra no período restante. A estimativa parte da mensalidade cadastrada; o administrador deve conferir o pagamento efetivo antes de decidir um reembolso.
+A troca de plano ou de valor personalizado é agendada para a próxima renovação. A prévia mostra início/fim do ciclo, dias reais usados/restantes, mensalidades, valores proporcionais de ambos os planos e a diferença caso a troca fosse hoje. O dia atual entra no período restante. Arredonda-se a parcela usada e o restante fecha a mensalidade exata; planos de mesmo valor produzem diferença zero, inclusive nos casos de meio centavo. A estimativa parte da mensalidade cadastrada; o administrador deve conferir o pagamento efetivo antes de decidir um reembolso.
 
 A prévia não movimenta dinheiro, não registra crédito e não executa reembolso. Cobranças já emitidas permanecem intactas e precisam de revisão manual. Novas cobranças de períodos futuros respeitam a troca agendada. Não se gera cobrança para uma troca vencida que ainda não foi aplicada.
 
@@ -201,7 +201,7 @@ No Lessonara, o plano comercial informa `feature_tier`. O worker aplica o acesso
 
 O cron diário existente executa as trocas vencidas às 09:00 de São Paulo. Há lote de 10, lease de cinco minutos, cinco tentativas e marcação de falha após esgotamento ou interrupção da última tentativa. Pendências e falhas aparecem em Saúde e na conta; reprocessamento manual exige administrador. Se a revisão da origem mudou, revisar/cancelar o acordo antes de reagendar. A geração de cobranças também tenta concluir as trocas vencidas antes de cobrar.
 
-Migração: `20261023000004_subscription_changes.sql`. Validação: `supabase/operations/verify-subscriptions.sql`, com fixtures e rollback, cobrindo data de renovação, dias, replay, prévia obsoleta, proteção dos termos, cancelamento, lease, aplicação/auditoria atômicas, preservação de cobranças, tentativas esgotadas e reprocessamento.
+Migrações: `20261023000004_subscription_changes.sql` (fluxo) e `20261023000005_proration_rounding.sql` (fechamento dos centavos). Validação: `supabase/operations/verify-subscriptions.sql`, com fixtures e rollback, cobrindo data de renovação, dias, replay, prévia obsoleta, proteção dos termos, cancelamento, lease, aplicação/auditoria atômicas, preservação de cobranças, tentativas esgotadas e reprocessamento.
 
 ### Suporte por email
 
@@ -214,4 +214,4 @@ Migração: `20261023000004_subscription_changes.sql`. Validação: `supabase/op
 
 ### Validação
 
-40 testes unitários aprovados. Migração exercitada no Postgres real em transações com rollback e aplicada ao banco administrativo. Build/typecheck aprovados. Next.js e eslint-config-next no patch 16.4.1; `pnpm audit --prod` sem alertas após a atualização. Produção validada: login/rotas autenticadas HTTP 200, redirecionamento sem sessão, prévia bloqueada e cron autenticado. Uma mensagem técnica enviada a `lessonara@mosaic-labs.co` percorreu Cloudflare → Resend → webhook (HTTP 200) → ticket associado ao Lessonara com corpo original. Replay do evento retornou 200 e manteve um único ticket/email. Os tickets técnicos foram encerrados sem apagar o histórico. Modal e drawer conferidos no navegador; cálculos e aplicação de assinatura exercitados com fixtures, sem alterar planos ou pagamentos de professores reais.
+41 testes unitários aprovados. Migração exercitada no Postgres real em transações com rollback e aplicada ao banco administrativo. Build/typecheck aprovados. Next.js e eslint-config-next no patch 16.4.1; `pnpm audit --prod` sem alertas após a atualização. Produção validada: login/rotas autenticadas HTTP 200, redirecionamento sem sessão, prévia bloqueada e cron autenticado. Uma mensagem técnica enviada a `lessonara@mosaic-labs.co` percorreu Cloudflare → Resend → webhook (HTTP 200) → ticket associado ao Lessonara com corpo original. Replay do evento retornou 200 e manteve um único ticket/email. Os tickets técnicos foram encerrados sem apagar o histórico. Modal e drawer conferidos no navegador; cálculos e aplicação de assinatura exercitados com fixtures, sem alterar planos ou pagamentos de professores reais.
