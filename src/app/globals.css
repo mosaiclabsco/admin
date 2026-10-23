@@ -187,7 +187,7 @@ h1, h2, .h1, .h2, .stat-value { font-family: var(--font-sans); }
 @media(max-width:860px) { .login-layout {grid-template-columns:minmax(0,1fr) minmax(360px,1fr);}.login-studio {padding:32px;}.login-studio h1 {font-size:44px;}.mosaic-wordmark {font-size:18px;} }
 @media(max-width:640px) { .login-layout {display:flex;flex-direction:column;}.login-studio {min-height:0;padding:24px;}.login-studio-content,.studio-art,.login-studio-footer {display:none;}.login-access {flex:1;padding:32px 24px;min-height:calc(100dvh - 86px);}.login-access-inner {padding-block:24px;}.login-access h2 {font-size:26px;} }
 
-.overlay { color:var(--fg); background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:0; width:min(640px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:visible; box-shadow:0 24px 80px #0f172a26; }
+.overlay { position:fixed;inset:0;margin:auto;height:fit-content;text-align:left;color:var(--fg); background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:0; width:min(640px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:visible; box-shadow:0 24px 80px #0f172a26; }
 .overlay::backdrop { background:#0f172a52; backdrop-filter:blur(3px); }
 .overlay-content { display:flex;flex-direction:column;max-height:calc(100dvh - 32px);overflow:hidden;border-radius:inherit; }
 .overlay-header { display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:24px;border-bottom:1px solid var(--line); }
