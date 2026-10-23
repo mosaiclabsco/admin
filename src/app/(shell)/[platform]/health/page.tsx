@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { todaySP } from "@/lib/billing";
 import { requireAdmin } from "@/lib/supabase/server";
 import { resolveScope } from "@/lib/platforms";
 import { healthStatus } from "@/lib/queries";
@@ -14,6 +16,10 @@ export default async function Health({ params }: PageProps<"/[platform]/health">
   const { supabase } = await requireAdmin();
   const { platform, platforms } = await resolveScope(slug);
   const targets = await healthStatus(supabase, platform?.id);
+  let changesQuery = supabase.from("subscription_changes").select("id,account_id,target_name,effective_on,status,attempts,last_error,account:accounts!inner(platform_id,name)").in("status", ["scheduled", "processing", "failed"]).order("effective_on").limit(50);
+  if (platform) changesQuery = changesQuery.eq("account.platform_id", platform.id);
+  const changes = await changesQuery;
+  if (changes.error) throw new Error("Não foi possível carregar as trocas de plano pendentes.");
   const byId = new Map(platforms.map((p) => [p.id, p]));
   const failures = targets.flatMap((t) => t.checks.filter((c) => !c.ok).map((c) => ({ ...c, target: t }))).sort((a, b) => b.checked_at.localeCompare(a.checked_at)).slice(0, 30);
 
@@ -73,6 +79,8 @@ export default async function Health({ params }: PageProps<"/[platform]/health">
           </table>
         ) : <Empty>Nenhum alvo cadastrado.</Empty>}
       </section>
+
+      <section className="card mt-4"><div className="px-6 pt-6 pb-3"><h2 className="h2">Trocas de plano</h2><p className="mt-2 text-xs text-muted">Aplicação diária na renovação. Falhas podem ser revisadas e reprocessadas no detalhe da conta.</p></div>{changes.data.length ? <div className="table-wrap"><table className="table"><thead><tr><th>Conta</th><th>Plano</th><th>Vigência</th><th>Status</th><th>Tentativas</th><th>Pendência</th></tr></thead><tbody>{changes.data.map(c => { const account = c.account as unknown as { name: string };return <tr key={c.id}><td><Link className="link" href={`/${slug}/accounts/${c.account_id}`}>{account.name || "Ver conta"}</Link></td><td>{c.target_name}</td><td>{c.effective_on.split("-").reverse().join("/")}</td><td><span className={`badge ${c.last_error || c.status === "failed" ? "badge-bad" : c.effective_on < todaySP() ? "badge-warn" : "badge-info"}`}>{c.status === "failed" ? "Revisão necessária" : c.status === "processing" ? "Aplicando" : c.effective_on < todaySP() ? "Em atraso" : "Agendada"}</span></td><td>{c.attempts}/5</td><td className="text-xs text-muted">{c.last_error ?? "—"}</td></tr>;})}</tbody></table></div> : <Empty>Nenhuma troca aguardando aplicação.</Empty>}</section>
 
       <section className="card card-pad mt-4">
         <h2 className="h2 mb-3">Novo alvo</h2>

@@ -11,7 +11,7 @@ Mesma base do Lessonara: Next.js 16.4, React 19.3, Supabase (`@supabase/ssr`), T
 - Next.js explícito, Node 24, instalação `pnpm install --frozen-lockfile`, build `pnpm build` e funções em São Paulo (`gru1`).
 - Oito variáveis configuradas somente em Production: URL/chave publishable do admin, secret key do admin, URL/secret key do Lessonara, Resend, remetente e cron. As chaves privadas e o cron são do tipo Sensitive. Preview não recebe credenciais de produção.
 - Cron diário em `/api/cron/health`, autorizado por segredo exclusivo deste projeto. O Auth administrativo aponta para a URL de produção e mantém cadastro público desligado.
-- Recebimento de suporte por email ainda exige domínio/MX de recebimento e webhook Resend com `RESEND_WEBHOOK_SECRET`. A rota responde 503 enquanto não configurada; o envio de OTP usa a chave de envio existente. Não criar um segredo fictício apenas para preencher a variável.
+- Suporte configurado com caixa em `support.mosaic-labs.co`, chave de leitura dedicada e webhook Resend assinado. O envio de OTP mantém a chave restrita existente. Ver operação de suporte abaixo.
 - As seções locais abaixo também documentam os testes anteriores à publicação; a instância em `127.0.0.1:3100` continua disponível para desenvolvimento.
 
 ## Decisões
@@ -119,7 +119,7 @@ node --env-file=.env.local test/e2e.mjs   # navegador (CDP) — ver cabeçalho d
 
 ## Atualização de 21/10/2026 — gestão do Lessonara
 
-O projeto existente foi reaproveitado. A interface usa a identidade do site Mosaic Labs: logo oficial, Satoshi e Clash Grotesk locais, fundo creme, azul/coral/amarelo/teal, menu com recolhimento animado, header fixo e conta com iniciais. Login e painel compartilham os mesmos tokens, com tema escuro e movimento reduzido. `STYLE_GUIDE.md` centraliza as regras.
+O projeto existente foi reaproveitado. A interface mantém a identidade Mosaic Labs: logo oficial, fundo creme, azul/coral/amarelo/teal, menu com recolhimento animado, header fixo e conta com iniciais. A tipografia foi ajustada em 23/10: fonte de sistema em toda a interface e no login; Clash Grotesk somente no wordmark, conforme `STYLE_GUIDE.md`. Login e painel compartilham os mesmos tokens, com tema escuro e movimento reduzido. `STYLE_GUIDE.md` centraliza as regras.
 
 ### Prévia sem banco
 
@@ -134,7 +134,7 @@ O projeto existente foi reaproveitado. A interface usa a identidade do site Mosa
 - Suspensão bloqueia sessão do professor, Data API/RLS/Storage e emissão/refresh de token. Preserva dados, portal do aluno e filas existentes. Não encerra retroativamente uma reunião Jitsi já conectada.
 - Acesso de suporte ao perfil do professor fica como tarefa futura, sem impersonação nesta versão.
 
-### Estado atual — bancos cloud conectados; frontend local
+### Estado na ativação inicial — bancos cloud conectados; frontend ainda local
 
 - O admin usa um projeto Supabase próprio no plano Free, em São Paulo. Não usa o banco do Lessonara como banco administrativo.
 - Schema administrativo aplicado sem `seed.sql`; cadastro público desligado; identidade do proprietário separada, allowlist e sessão administrativa absoluta de 12 horas no banco.
@@ -178,3 +178,40 @@ Hoje há um assinante por professor. Organizações com vários professores fica
 para uma evolução futura. O plano comercial e seus pagamentos pertencem ao admin;
 o plano de funcionalidades e a suspensão efetiva pertencem ao Lessonara e só são
 alterados pela operação administrativa autenticada e auditada.
+
+### Tipografia e dependências — 23/10/2026
+
+Títulos de página de 26 px, texto/menus/campos de 14 px e indicadores de 30 px, com a mesma família de sistema e pesos consistentes. Os indicadores mantêm números tabulares. As cores e o wordmark da Mosaic Labs foram preservados. Next.js e eslint-config-next atualizados para 16.4.1 após o aviso de segurança da versão 16.4.0 durante o build.
+
+## Ajustes administrativos — 23/10/2026
+
+### Interface
+
+Tema claro fixo, tipografia de sistema em títulos, tabelas e formulários. `Overlay` centraliza modal e drawer com diálogo nativo, foco contido, Escape, retorno ao botão e movimento reduzido. Criar/editar planos abre modal; dados de auditoria aparecem em drawer à direita. As tabelas preservam a altura das linhas.
+
+### Troca de assinatura e proporcionalidade
+
+A troca de plano ou de valor personalizado é agendada para a próxima renovação. A prévia mostra início/fim do ciclo, dias reais usados/restantes, mensalidades, valores proporcionais de ambos os planos e a diferença caso a troca fosse hoje. O dia atual entra no período restante. A estimativa parte da mensalidade cadastrada; o administrador deve conferir o pagamento efetivo antes de decidir um reembolso.
+
+A prévia não movimenta dinheiro, não registra crédito e não executa reembolso. Cobranças já emitidas permanecem intactas e precisam de revisão manual. Novas cobranças de períodos futuros respeitam a troca agendada. Não se gera cobrança para uma troca vencida que ainda não foi aplicada.
+
+`subscription_changes` preserva o acordo e a prévia. O banco revalida administrador, plataforma/plano ativo, preços, vencimento e data. O agendamento é idempotente e não troca o plano atual imediatamente. Alterações diretas dos termos pelo cliente são recusadas. Cancelar mantém o plano atual; o vencimento fica protegido enquanto há uma troca aberta.
+
+No Lessonara, o plano comercial informa `feature_tier`. O worker aplica o acesso pela RPC já auditada, usando a revisão/suspensão capturadas e um identificador estável; só depois confirma assinatura e auditoria no admin. Uma repetição recupera a operação sem aplicar duas vezes. Mudança concorrente de acesso exige revisão e preserva os termos atuais. Suspender/liberar segue imediato, mas não altera o plano pela tela de acesso.
+
+O cron diário existente executa as trocas vencidas às 09:00 de São Paulo. Há lote de 10, lease de cinco minutos, cinco tentativas e marcação de falha após esgotamento ou interrupção da última tentativa. Pendências e falhas aparecem em Saúde e na conta; reprocessamento manual exige administrador. Se a revisão da origem mudou, revisar/cancelar o acordo antes de reagendar. A geração de cobranças também tenta concluir as trocas vencidas antes de cobrar.
+
+Migração: `20261023000004_subscription_changes.sql`. Validação: `supabase/operations/verify-subscriptions.sql`, com fixtures e rollback, cobrindo data de renovação, dias, replay, prévia obsoleta, proteção dos termos, cancelamento, lease, aplicação/auditoria atômicas, preservação de cobranças, tentativas esgotadas e reprocessamento.
+
+### Suporte por email
+
+- Caixa interna: `lessonara@support.mosaic-labs.co`; o endereço público `lessonara@mosaic-labs.co` é encaminhado pela Cloudflare para essa caixa mediante autorização do proprietário. Os demais endereços e os MX do domínio raiz são preservados.
+- Subdomínio de recebimento em São Paulo no Resend, separado do envio. `RESEND_RECEIVING_API_KEY` lê o corpo do email; `RESEND_API_KEY` continua restrita a envio.
+- Respostas usam remetente verificado do domínio principal (`SUPPORT_EMAIL_FROM`) e Reply-To da caixa interna. `SUPPORT_RECEIVING_DOMAIN` limita os eventos ao domínio de suporte.
+- Webhook `email.received` com `RESEND_WEBHOOK_SECRET`, assinatura/timestamp verificados e deduplicação por Message-ID. Falha ao obter o corpo retorna 502 para permitir nova entrega. Eventos inválidos são recusados.
+- A barreira da Vercel permanece ativa. O endpoint cadastrado no Resend contém o segredo de automação aprovado pelo proprietário; não copiar essa URL para documentação, tickets ou logs. Essa autorização não substitui OTP/allowlist do painel. Em rotação desse segredo, atualizar o endpoint do webhook e validar novamente.
+- Chaves e assinatura apenas em variáveis de backend de Production, fora do Git. Não publicar valores nem URLs com credenciais.
+
+### Validação
+
+40 testes unitários aprovados. Migração exercitada no Postgres real em transações com rollback e aplicada ao banco administrativo. Build/typecheck aprovados. Next.js e eslint-config-next no patch 16.4.1; `pnpm audit --prod` sem alertas após a atualização. Conferir os fluxos visuais e o webhook no deployment final antes de considerar o recebimento ponta a ponta validado.

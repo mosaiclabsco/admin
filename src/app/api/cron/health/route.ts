@@ -1,5 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
+import { runSubscriptionChanges } from "@/lib/subscription-worker";
+import { writeTeacherAccess } from "@/lib/management";
 import { runHealthChecks } from "@/lib/health";
 
 const RETENTION_DAYS = 30;
@@ -15,7 +17,8 @@ function authorized(request: Request) {
 export async function GET(request: Request) {
   if (!authorized(request)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const db = createServiceClient();
+  const subscriptions = await runSubscriptionChanges(db, writeTeacherAccess);
   const results = await runHealthChecks(db);
   await db.from("health_checks").delete().lt("checked_at", new Date(Date.now() - RETENTION_DAYS * 86400_000).toISOString());
-  return Response.json({ checked: results.length, failing: results.filter((r) => !r.ok).length });
+  return Response.json({ checked: results.length, failing: results.filter((r) => !r.ok).length, subscriptions });
 }

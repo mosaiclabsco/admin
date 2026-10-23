@@ -5,7 +5,9 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import type { FormResult } from "@/components/form";
 import { requireAdmin } from "@/lib/supabase/server";
 import { parseAccessChange } from "@/lib/management-rules";
-import { writeTeacherAccess } from "@/lib/management";
+import { createServiceClient } from "@/lib/supabase/server";
+import { runSubscriptionChanges } from "@/lib/subscription-worker";
+import { readTeacherAccess, writeTeacherAccess } from "@/lib/management";
 import { audit } from "@/lib/audit";
 import { buildCharges, toPeriod, todaySP, type BillableAccount } from "@/lib/billing";
 import { parseMoney } from "@/lib/format";
@@ -48,6 +50,8 @@ export const updateLessonaraAccess = action(async ({ supabase, email }, form) =>
   const platform = must(await supabase.from("platforms").select("slug").eq("id", account.platform_id).single(), "Plataforma não encontrada.");
   if (platform.slug !== "lessonara") throw new Error("Esta conta não pertence ao Lessonara.");
   const change = parseAccessChange(form, account.external_id);
+  const currentAccess = await readTeacherAccess(account.external_id);
+  if (!currentAccess || change.plan !== currentAccess.platform_plan) throw new Error("Use Trocar plano para agendar a alteração na renovação.");
   await writeTeacherAccess(email, change);
   // The source transaction already recorded the authoritative audit. Local history is supplementary.
   const logged = await supabase.from("audit_log").insert({ actor: email, action: "lessonara.access.update", platform_id: account.platform_id, entity: "account", entity_id: id, data: { operation: change.operation, reason: change.reason, plan: change.plan, suspended: change.suspended } });
@@ -60,12 +64,9 @@ export const updateAccount = action(async ({ supabase, email }, form) => {
   const id = uuid(form, "id");
   const status = text(form, "status");
   if (!["trial", "active", "suspended", "cancelled"].includes(status)) throw new Error("Status inválido.");
-  const override = optional(form, "price_override");
-  const priceOverride = override === null ? null : parseMoney(override);
-  if (override !== null && priceOverride === null) throw new Error("Valor personalizado inválido.");
   const billingDay = Number(text(form, "billing_day"));
   if (!Number.isInteger(billingDay) || billingDay < 1 || billingDay > 28) throw new Error("Dia de vencimento deve ser de 1 a 28.");
-  const changes = { status, plan_id: optional(form, "plan_id"), price_override_cents: priceOverride, billing_day: billingDay, notes: optional(form, "notes") };
+  const changes = { status, billing_day: billingDay, notes: optional(form, "notes") };
   const before = must(await supabase.from("accounts").select("platform_id,status,plan_id,price_override_cents,billing_day").eq("id", id).single(), "Conta não encontrada.");
   must(await supabase.from("accounts").update(changes).eq("id", id), "Não foi possível salvar a conta.");
   await audit(supabase, { actor: email, action: "account.update", platformId: before.platform_id, entity: "account", entityId: id, data: { before, after: changes } });
@@ -102,12 +103,19 @@ export const syncPlatformAccounts = action(async ({ supabase, email }, form) => 
 // ───────────── Cobranças ─────────────
 
 export const generateCharges = action(async ({ supabase, email }, form) => {
+  await runSubscriptionChanges(createServiceClient(), writeTeacherAccess);
   const period = toPeriod(text(form, "period"));
   const platformId = optional(form, "platform_id");
   let query = supabase.from("accounts").select("id,status,billing_day,price_override_cents,platform_id,plan:plans!accounts_plan_id_fkey(price_cents)").eq("status", "active");
   if (platformId) query = query.eq("platform_id", platformId);
   const accounts = must(await query, "Não foi possível carregar as contas.") as unknown as (BillableAccount & { platform_id: string })[];
-  const rows = buildCharges(accounts, period);
+  const pending = accounts.length ? await supabase.from("subscription_changes").select("account_id,new_price_cents,effective_on,status").in("account_id", accounts.map(a => a.id)).in("status", ["scheduled", "processing", "failed"]) : { data: [], error: null };
+  if (pending.error) throw new Error("Não foi possível conferir as trocas agendadas.");
+  const rows = buildCharges(accounts.map(account => {
+    const change = pending.data?.find(c => c.account_id === account.id && c.effective_on <= `${period.slice(0, 8)}${String(account.billing_day).padStart(2, "0")}`);
+    if (change && (change.effective_on <= todaySP() || change.status === "failed" || change.status === "processing")) throw new Error("Há uma troca pendente de aplicação. Revise a conta antes de gerar cobranças.");
+    return change ? { ...account, price_override_cents: change.new_price_cents } : account;
+  }), period);
   if (!rows.length) return "Nenhuma conta ativa com plano para cobrar.";
   const inserted = must(await supabase.from("charges").upsert(rows, { onConflict: "account_id,period", ignoreDuplicates: true }).select("id"), "Não foi possível gerar as cobranças.");
   await audit(supabase, { actor: email, action: "charges.generate", platformId, data: { period, created: inserted.length } });
@@ -146,15 +154,19 @@ export const savePlan = action(async ({ supabase, email }, form) => {
   const code = text(form, "code").toUpperCase();
   if (!/^[A-Z0-9][A-Z0-9_.-]{0,39}$/.test(code)) throw new Error("ID do plano: letras, números, - _ . (até 40).");
   const price = parseMoney(text(form, "price"));
-  if (price === null) throw new Error("Preço inválido.");
-  const values = { code, name: text(form, "name") || code, price_cents: price, active: form.get("active") !== "off", notes: optional(form, "notes") };
+  if (price === null || price > 9900000) throw new Error("Preço inválido (máximo R$ 99.000,00).");
+  const platformId = id ? must(await supabase.from("plans").select("platform_id").eq("id", id).single(), "Plano não encontrado.").platform_id : uuid(form, "platform_id");
+  const platform = must(await supabase.from("platforms").select("slug").eq("id", platformId).single(), "Plataforma não encontrada.");
+  const featureTier = optional(form, "feature_tier");
+  if (platform.slug === "lessonara" && !["essential", "plus", "pro"].includes(featureTier ?? "")) throw new Error("Selecione o acesso do plano no Lessonara.");
+  if (text(form, "name").length > 100 || text(form, "notes").length > 2000) throw new Error("Nome ou observação muito longos.");
+  const values = { feature_tier: platform.slug === "lessonara" ? featureTier : null, code, name: text(form, "name") || code, price_cents: price, active: form.get("active") !== "off", notes: optional(form, "notes") };
   if (id) {
     const plan = must(await supabase.from("plans").select("platform_id").eq("id", id).single(), "Plano não encontrado.");
     must(await supabase.from("plans").update(values).eq("id", id), "Não foi possível salvar (ID repetido nesta plataforma?).");
     await audit(supabase, { actor: email, action: "plan.update", platformId: plan.platform_id, entity: "plan", entityId: id, data: values });
     return "Plano salvo.";
   }
-  const platformId = uuid(form, "platform_id");
   const created = must(await supabase.from("plans").insert({ ...values, platform_id: platformId }).select("id").single(), "Não foi possível criar (ID repetido nesta plataforma?).");
   await audit(supabase, { actor: email, action: "plan.create", platformId, entity: "plan", entityId: created.id, data: values });
   return "Plano criado.";
@@ -173,7 +185,7 @@ export const replyTicket = action(async ({ supabase, email }, form) => {
     if (!emailConfigured()) throw new Error("RESEND_API_KEY não configurada: use nota interna ou responda pelo seu email.");
     const last = await supabase.from("support_messages").select("message_id").eq("ticket_id", id).eq("direction", "inbound").order("created_at", { ascending: false }).limit(1).maybeSingle();
     const replyTo = ticket.platform?.support_email ?? undefined;
-    const from = replyTo ? `${ticket.platform!.name} <${replyTo}>` : undefined;
+    const from = process.env.SUPPORT_EMAIL_FROM || process.env.EMAIL_FROM;
     const subject = /^re:/i.test(ticket.subject) ? ticket.subject : `Re: ${ticket.subject}`;
     const headers = last.data?.message_id ? { "In-Reply-To": last.data.message_id, References: last.data.message_id } : undefined;
     const sentId = await sendEmail({ to: ticket.from_email, subject, text: body, from, replyTo, headers });
@@ -242,4 +254,39 @@ export const savePlatform = action(async ({ supabase, email }, form) => {
   await audit(supabase, { actor: email, action: id ? "platform.update" : "platform.create", platformId: id, entity: "platform", entityId: id ?? slug, data: values });
   if (!id) redirect(`/${slug}`);
   return "Plataforma salva.";
+});
+
+
+export const scheduleSubscriptionChange = action(async ({ supabase }, form) => {
+  const id = uuid(form, "id");
+  const target = uuid(form, "target_plan");
+  const operation = uuid(form, "operation");
+  const rawOverride = optional(form, "next_override");
+  const override = rawOverride === null ? null : parseMoney(rawOverride);
+  if (rawOverride !== null && (override === null || override > 9900000)) throw new Error("Valor personalizado inválido.");
+  const account = must(await supabase.from("accounts").select("external_id,platform_id").eq("id", id).single(), "Conta não encontrada.");
+  const platform = must(await supabase.from("platforms").select("slug").eq("id", account.platform_id).single(), "Plataforma não encontrada.");
+  const access = platform.slug === "lessonara" ? await readTeacherAccess(account.external_id) : null;
+  if (platform.slug === "lessonara" && !access) throw new Error("Conta não encontrada no Lessonara.");
+  const ints = ["expected_current", "expected_new", "expected_day"].map(key => {
+    const value = Number(text(form, key));
+    if (!/^\d+$/.test(text(form, key)) || !Number.isSafeInteger(value)) throw new Error("Prévia inválida. Reabra a troca.");
+    return value;
+  });
+  const result = await supabase.rpc("schedule_subscription_change", { p_account: id, p_plan: target, p_override: override, p_expected_current: ints[0], p_expected_new: ints[1], p_expected_day: ints[2], p_today: text(form, "quote_date"), p_operation: operation, p_source_revision: access?.access_revision ?? null, p_source_suspended: access?.access_suspended ?? null });
+  if (result.error) throw new Error(result.error.code === "40001" ? "Os valores ou o ciclo mudaram. Atualize a página e revise novamente." : "Não foi possível agendar. Confira se o plano está ativo e vinculado ao acesso, ou se já há uma troca pendente.");
+  return "Troca agendada para a próxima renovação. Nenhum reembolso foi executado.";
+});
+
+export const cancelSubscriptionChange = action(async ({ supabase }, form) => {
+  const result = await supabase.rpc("cancel_subscription_change", { p_id: uuid(form, "change_id") });
+  if (result.error) throw new Error("Não foi possível cancelar. A troca pode já estar sendo aplicada.");
+  return "Troca cancelada. O plano atual foi mantido.";
+});
+
+export const retrySubscriptionChange = action(async ({ supabase }, form) => {
+  const retry = await supabase.rpc("retry_subscription_change", { p_id: uuid(form, "change_id") });
+  if (retry.error) throw new Error("A troca ainda não venceu ou já está em processamento.");
+  const result = await runSubscriptionChanges(createServiceClient(), writeTeacherAccess);
+  return result.failed ? "Reprocessamento concluído com pendências. Confira o motivo na conta." : "Troca reprocessada. Confira o plano e o histórico.";
 });

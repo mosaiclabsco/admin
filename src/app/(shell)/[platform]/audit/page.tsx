@@ -1,3 +1,4 @@
+import { AuditDetails } from "@/components/audit-details";
 import { requireAdmin } from "@/lib/supabase/server";
 import { resolveScope } from "@/lib/platforms";
 import { dateTime } from "@/lib/format";
@@ -27,7 +28,7 @@ export default async function Audit({ params }: PageProps<"/[platform]/audit">) 
                   <td className="text-xs">{row.actor}</td>
                   <td className="font-mono text-xs">{row.action}</td>
                   {!platform && <td><PlatformTag platform={row.platform_id ? byId.get(row.platform_id) : null} /></td>}
-                  <td><details><summary className="text-xs text-muted">{row.entity ? `${row.entity} ${String(row.entity_id ?? "").slice(0, 8)}` : "ver"}</summary><pre className="mt-2 max-w-xl overflow-x-auto rounded bg-sunken p-2 text-[11px]">{JSON.stringify(row.data, null, 2)}</pre></details></td>
+                  <td><AuditDetails entry={row} platform={row.platform_id ? byId.get(row.platform_id)?.name ?? "—" : "Todas as plataformas"} /></td>
                 </tr>
               ))}
             </tbody>

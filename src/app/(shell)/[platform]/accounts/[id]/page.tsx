@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { SubscriptionPlanPanel } from "@/components/subscription-plan-panel";
+import type { SubscriptionChange } from "@/lib/subscriptions";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/supabase/server";
 import { resolveScope } from "@/lib/platforms";
@@ -25,12 +27,14 @@ export default async function AccountDetail({ params }: PageProps<"/[platform]/a
   if (!accountRes.data) notFound();
   const account = accountRes.data as unknown as AccountRow;
   const platform = platforms.find((p) => p.id === account.platform_id);
-  const [plans, charges, tickets, history] = await Promise.all([
+  const [plans, charges, tickets, history, scheduled] = await Promise.all([
     listPlans(supabase, account.platform_id),
     supabase.from("charges").select("id,period,amount_cents,due_on,status,paid_at,paid_amount_cents,method,reference,settled_by").eq("account_id", id).order("period", { ascending: false }).limit(24),
     supabase.from("support_tickets").select("id,subject,status,last_message_at").eq("account_id", id).order("last_message_at", { ascending: false }).limit(10),
     supabase.from("audit_log").select("id,actor,action,created_at").eq("entity_id", id).order("created_at", { ascending: false }).limit(10),
+    supabase.from("subscription_changes").select("id,account_id,target_plan_id,target_name,new_price_cents,effective_on,status,attempts,last_error,actor").eq("account_id", id).in("status", ["scheduled", "processing", "failed"]).maybeSingle(),
   ]);
+  if (scheduled.error) throw new Error("Não foi possível carregar as trocas agendadas.");
   const today = todaySP();
   const price = monthlyPrice(account);
   const totalPaid = (charges.data ?? []).filter((c) => c.status === "paid").reduce((s, c) => s + (c.paid_amount_cents ?? 0), 0);
@@ -46,6 +50,7 @@ export default async function AccountDetail({ params }: PageProps<"/[platform]/a
         <section className="card card-pad lg:col-span-1">
           <h2 className="h2 mb-4">Assinatura comercial</h2>
           <p className="mb-5 text-xs text-muted">Mensalidade e situação da cobrança. O acesso ao produto é controlado no card “Acesso ao Lessonara”.</p>
+          <SubscriptionPlanPanel account={account} plans={plans} pending={scheduled.data as SubscriptionChange | null} today={today} slug={slug} />
           <Form action={updateAccount} className="space-y-3">
             <input type="hidden" name="id" value={account.id} />
             <div>
@@ -54,21 +59,10 @@ export default async function AccountDetail({ params }: PageProps<"/[platform]/a
                 <option value="trial">Teste</option><option value="active">Ativa</option><option value="suspended">Suspensa</option><option value="cancelled">Cancelada</option>
               </select>
             </div>
-            <div>
-              <label className="label" htmlFor="plan_id">Plano</label>
-              <select className="input" id="plan_id" name="plan_id" defaultValue={account.plan_id ?? ""}>
-                <option value="">Sem plano</option>
-                {plans.map((p) => <option key={p.id} value={p.id} disabled={!p.active && p.id !== account.plan_id}>{p.code} — {p.name} ({money(p.price_cents)}){!p.active ? " · inativo" : ""}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label" htmlFor="price_override">Valor personalizado</label>
-                <input className="input" id="price_override" name="price_override" placeholder="usa o do plano" defaultValue={account.price_override_cents != null ? (account.price_override_cents / 100).toFixed(2).replace(".", ",") : ""} />
-              </div>
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 <label className="label" htmlFor="billing_day">Dia do vencimento</label>
-                <input className="input" id="billing_day" name="billing_day" type="number" min={1} max={28} defaultValue={account.billing_day} />
+                <input className="input" id="billing_day" name="billing_day" type="number" min={1} max={28} defaultValue={account.billing_day} readOnly={Boolean(scheduled.data)} />
               </div>
             </div>
             <div>

@@ -10,12 +10,15 @@ export const FormPending = createContext(false);
  * Não usa o reset automático do React: formulários de edição mantêm os valores salvos;
  * os de criação passam resetOnSuccess.
  */
-export function Form({ action, children, className, id, resetOnSuccess = false }: { action: (prev: FormResult, data: FormData) => Promise<FormResult>; children: ReactNode; className?: string; id?: string; resetOnSuccess?: boolean }) {
+export function Form({ action, children, className, id, resetOnSuccess = false, onSuccess }: { action: (prev: FormResult, data: FormData) => Promise<FormResult>; children: ReactNode; className?: string; id?: string; resetOnSuccess?: boolean; onSuccess?: () => void }) {
   const [state, dispatch, pending] = useActionState(action, null);
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (state?.ok && resetOnSuccess) ref.current?.reset();
-  }, [state, resetOnSuccess]);
+    if (state?.ok) {
+      if (resetOnSuccess) ref.current?.reset();
+      onSuccess?.();
+    }
+  }, [state, resetOnSuccess, onSuccess]);
   return (
     <form
       ref={ref}

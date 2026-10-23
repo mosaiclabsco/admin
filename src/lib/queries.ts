@@ -59,10 +59,10 @@ export async function listAccounts(db: SupabaseClient, platformId?: string | nul
   return data as unknown as AccountRow[];
 }
 
-export type PlanRow = { id: string; platform_id: string; code: string; name: string; price_cents: number; active: boolean; notes: string | null };
+export type PlanRow = { id: string; platform_id: string; code: string; name: string; price_cents: number; active: boolean; notes: string | null; feature_tier: "essential" | "plus" | "pro" | null };
 
 export async function listPlans(db: SupabaseClient, platformId?: string | null) {
-  let q = db.from("plans").select("id,platform_id,code,name,price_cents,active,notes").order("price_cents");
+  let q = db.from("plans").select("id,platform_id,code,name,price_cents,active,notes,feature_tier").order("price_cents");
   if (platformId) q = q.eq("platform_id", platformId);
   const { data, error } = await q;
   if (error) throw new Error("Não foi possível carregar os planos.");
