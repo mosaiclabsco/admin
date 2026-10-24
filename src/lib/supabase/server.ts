@@ -24,7 +24,7 @@ export const createClient = cache(async function createClient() {
   });
 });
 
-/** Ignora RLS. Só para login (antes da sessão existir), webhook e cron. */
+/** Ignora RLS. Login, webhook, cron e operações privilegiadas após validar o admin. */
 export function createServiceClient() {
   return createSupabaseClient(url, process.env.SUPABASE_SECRET_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },

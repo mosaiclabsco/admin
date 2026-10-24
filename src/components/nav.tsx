@@ -12,6 +12,7 @@ const sections: { path: string; label: string; icon: IconName }[] = [
   { path: "plans", label: "Planos", icon: "layers" },
   { path: "support", label: "Suporte", icon: "inbox" },
   { path: "health", label: "Saúde", icon: "pulse" },
+  { path: "jobs", label: "Jobs e filas", icon: "clock" },
   { path: "audit", label: "Auditoria", icon: "list" },
 ];
 
