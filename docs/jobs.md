@@ -1,6 +1,6 @@
 # Jobs e filas
 
-Estado em 24/10/2026: implementação local; não publicada. Aplicação das migrações e alteração dos agendamentos ficam para a entrega conjunta dos dez itens de revisão.
+Publicado em 24/10/2026: deploy READY, migração do admin aplicada e conector Lessonara validado pelo snapshot privado. Migrações 0030/0031/0032 e agendamentos Lessonara ativos.
 
 A tela `/{plataforma}/jobs` (incluindo `/all/jobs` e `/lessonara/jobs`) centraliza jobs do admin e do Lessonara. Requer sessão e autorização administrativa. O conector Lessonara só roda no backend; nenhuma chave de serviço vai para o navegador.
 
@@ -15,7 +15,7 @@ A tela `/{plataforma}/jobs` (incluindo `/all/jobs` e `/lessonara/jobs`) centrali
 
 No admin, `/api/cron/health` roda diariamente às 09h de Brasília pelo cron da Vercel: verifica alvos HTTP, aplica trocas de assinatura agendadas para renovação e limpa verificações com mais de 30 dias. O horário vem do `vercel.json`, não do catálogo pg_cron. A telemetria de execução requer a migração `20261024000006_job_monitoring.sql`. Sem execução desde sua ativação, a tela informa ausência de registro; não presume sucesso.
 
-Detalhes dos workers do Lessonara: `lessonara/docs/workers.md` no repositório do produto. Migrações Lessonara 0030/0031 e novo agendamento precisam ser aplicados durante a publicação conjunta.
+Detalhes dos workers do Lessonara: `lessonara/docs/workers.md` no repositório do produto. Migrações Lessonara 0030/0031/0032 e novo agendamento aplicados na publicação conjunta.
 
 ## Atualização sem SSE
 
@@ -30,3 +30,6 @@ O painel oferece alertas visuais; não há notificação externa independente pa
 O endpoint `/api/jobs` valida sessão, `is_admin()` e plataforma antes das leituras privilegiadas. Respostas não são armazenadas em cache compartilhado. A ausência de migração/conector é exibida como indisponibilidade, sem fingir fila vazia saudável. Snapshots omitem credenciais, comandos cron, destinatários e conteúdo dos emails.
 
 Histórico de aplicação e sucesso do agendador são separados: enfileirar uma requisição HTTP não prova que o processamento terminou. Um email aceito pelo provedor ainda pode falhar na entrega.
+
+
+Conferência de implantação: os cinco workers Lessonara responderam 200 via Vault/pg_net, com conclusão registrada. Houve execução automática das janelas de renovação e dos jobs periódicos; filas sem pendências/falhas. O job diário administrativo não foi antecipado e terá seu primeiro registro após a ativação na rotina das 09h. O endpoint de consulta exige login; a sessão do administrador estava expirada e não foi contornada para QA visual.
