@@ -82,3 +82,17 @@ it("janela de renovação sem concluir prevalece sobre chamada HTTP bem sucedida
   ];
   expect(jobState(renewal, s, now).label).toBe("Janela sem conclusão");
 });
+
+it("backup tolera duração própria e detecta ausência diária sem depender do cron Supabase", () => {
+  const backup = LESSONARA_JOBS.find((j) => j.key === "backup")!;
+  const s = source();
+  s.cron = [];
+  s.runs = [{ ...run("running", 15), job_key: "backup" }];
+  expect(jobState(backup, s, now).label).toBe("Em execução");
+  s.runs = [{ ...run("running", 121), job_key: "backup" }];
+  expect(jobState(backup, s, now).label).toBe("Execução interrompida");
+  s.runs = [{ ...run("succeeded", 31 * 60), job_key: "backup" }];
+  expect(jobState(backup, s, now).label).toBe("Sem execução recente");
+  s.runs = [{ ...run("succeeded", 24 * 60), job_key: "backup" }];
+  expect(jobState(backup, s, now).label).toBe("Concluído");
+});

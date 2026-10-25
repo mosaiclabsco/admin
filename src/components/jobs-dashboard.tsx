@@ -6,6 +6,12 @@ import { Overlay } from "./overlay";
 import { dateTime, relative } from "@/lib/format";
 import { jobState, type JobsSnapshot } from "@/lib/job-model";
 const metricLabels: Record<string, string> = {
+  tables: "Tabelas copiadas",
+  rows: "Registros copiados",
+  files: "Arquivos preservados",
+  downloadedFiles: "Arquivos novos ou alterados",
+  storageBytes: "Bytes de arquivos",
+
   checked: "Verificados",
   queued: "Enfileirados",
   sent: "Aceitos pelo provedor",

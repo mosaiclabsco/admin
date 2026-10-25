@@ -41,8 +41,18 @@ export type JobDefinition = {
   schedule: string;
   cronName?: string;
   maxGapMinutes: number;
+  maxRuntimeMinutes?: number;
 };
 export const LESSONARA_JOBS: JobDefinition[] = [
+  {
+    key: "backup",
+    name: "Backup externo criptografado",
+    description:
+      "Banco, contas e arquivos no R2; verifica leitura e mantém 14 cópias. Agendamento no GitHub Actions.",
+    schedule: "03h17 · Brasília (GitHub Actions)",
+    maxGapMinutes: 30 * 60,
+    maxRuntimeMinutes: 120,
+  },
   {
     key: "lesson-reminders",
     name: "Lembretes de aula",
@@ -144,7 +154,8 @@ export function jobState(
   }
   if (!latest) return { label: "Sem execução registrada", tone: "muted" };
   if (latest.status === "running")
-    return now - Date.parse(latest.started_at) > 120000
+    return now - Date.parse(latest.started_at) >
+      (job.maxRuntimeMinutes ?? 2) * 60000
       ? { label: "Execução interrompida", tone: "bad" }
       : { label: "Em execução", tone: "info" };
   if (latest.status === "failed") return { label: "Falhou", tone: "bad" };
