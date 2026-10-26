@@ -11,3 +11,5 @@ O reenvio tem intervalo mínimo de um minuto por email. Links são temporários 
 A conta da professora do piloto permanece sem convite até a aprovação do teste pelo responsável. A documentação técnica da definição de senha fica no Lessonara em `docs/teacher-access.md`.
 
 Validação: 59 testes do admin aprovados, build e lint dos arquivos alterados aprovados, publicação pronta na Vercel. Um envio real para a conta de teste existente foi aceito pelo provedor, com acompanhamento e auditoria registrados e plano preservado. A escolha da senha pelo destinatário permanece como verificação manual antes do convite do piloto.
+
+O email usa o logo completo oficial hospedado no Lessonara e orienta usar o link de recuperação em até 10 minutos, conforme o limite de OTP configurado.
