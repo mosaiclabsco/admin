@@ -9,3 +9,5 @@ As ações exigem sessão administrativa no servidor, verificam plataforma e ví
 O reenvio tem intervalo mínimo de um minuto por email. Links são temporários e de uso único. A página de destino só consome o token quando o professor envia a senha. Solicite reenvio quando o link expirar.
 
 A conta da professora do piloto permanece sem convite até a aprovação do teste pelo responsável. A documentação técnica da definição de senha fica no Lessonara em `docs/teacher-access.md`.
+
+Validação: 59 testes do admin aprovados, build e lint dos arquivos alterados aprovados, publicação pronta na Vercel. Um envio real para a conta de teste existente foi aceito pelo provedor, com acompanhamento e auditoria registrados e plano preservado. A escolha da senha pelo destinatário permanece como verificação manual antes do convite do piloto.
