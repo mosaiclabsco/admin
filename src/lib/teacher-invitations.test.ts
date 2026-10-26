@@ -8,6 +8,7 @@ const m = vi.hoisted(() => ({
   record: vi.fn(),
   limit: vi.fn(),
   authorized: true,
+  conflictingAccount: false,
   existing: true,
   profile: true,
   planError: false,
@@ -49,7 +50,7 @@ function fakeDb() {
               ? m.authorized
                 ? { user_id: "admin-id" }
                 : null
-              : null,
+              : table === "accounts" && m.conflictingAccount ? {id:"account-id",external_id:"another-teacher"} : null,
           error: null,
         }),
         single: async () => ({
@@ -119,6 +120,7 @@ function sourceDb() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  m.conflictingAccount = false;
   m.authorized = true;
   m.existing = true;
   m.profile = true;
@@ -256,4 +258,11 @@ it("status é lido apenas para um vínculo UUID e textos do email são escapados
       "invite" as unknown as boolean,
     ).html,
   ).not.toContain("<img src=x>");
+});
+
+it("não cria acesso paralelo quando o email já pertence a uma conta comercial sem o vínculo correto",async()=>{
+ m.conflictingAccount=true;
+ await expect(inviteTeacher(fakeDb(),actor,input,sourceDb())).rejects.toThrow("Já existe uma conta comercial");
+ expect(m.generate).not.toHaveBeenCalled();
+ expect(m.mail).not.toHaveBeenCalled();
 });

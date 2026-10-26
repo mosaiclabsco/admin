@@ -13,3 +13,5 @@ A conta da professora do piloto permanece sem convite até a aprovação do test
 Validação: 59 testes do admin aprovados, build e lint dos arquivos alterados aprovados, publicação pronta na Vercel. Um envio real para a conta de teste existente foi aceito pelo provedor, com acompanhamento e auditoria registrados e plano preservado. A escolha da senha pelo destinatário permanece como verificação manual antes do convite do piloto.
 
 O email usa o logo completo oficial hospedado no Lessonara e orienta usar o link de recuperação em até 10 minutos, conforme o limite de OTP configurado.
+
+A migração `20261026000007_account_email_unique.sql` impede contas comerciais com o mesmo email na mesma plataforma, desconsiderando caixa e espaços. O cadastro manual valida o email e apresenta mensagem de duplicidade; o índice protege requisições simultâneas. Um convite não cria um professor paralelo quando já existe conta comercial com esse email e outro vínculo: é preciso revisar a identidade existente. Reenviar para o professor já vinculado continua permitido e não cria nova conta.

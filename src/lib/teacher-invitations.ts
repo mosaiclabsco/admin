@@ -117,6 +117,11 @@ export async function inviteTeacher(
     .eq("email", email)
     .maybeSingle();
   if (target.error) throw new Error("Não foi possível consultar o professor.");
+  const linkedAccount = await db.from("accounts").select("id,external_id")
+    .eq("platform_id", platform.data.id).eq("email", email).maybeSingle();
+  if (linkedAccount.error) throw new Error("Não foi possível verificar o vínculo da conta.");
+  if (linkedAccount.data && linkedAccount.data.external_id !== target.data?.id)
+    throw new Error("Já existe uma conta comercial com este email. Revise o vínculo antes de convidar o professor.");
   if (target.data && selected.data) {
     const current = await readTeacherAccess(target.data.id);
     if (!current || current.platform_plan !== selected.data.feature_tier)

@@ -77,14 +77,20 @@ export const createAccount = action(async ({ supabase, email }, form) => {
   const platformId = uuid(form, "platform_id");
   const name = text(form, "name");
   if (!name) throw new Error("Informe o nome.");
+  const contactEmail = optional(form, "email")?.trim().toLowerCase() ?? null;
+  if (contactEmail && (!/^\S+@\S+\.\S+$/.test(contactEmail) || contactEmail.length > 254)) throw new Error("Informe um email válido.");
+  if (contactEmail) {
+    const existing = must(await supabase.from("accounts").select("id").eq("platform_id", platformId).eq("email", contactEmail).maybeSingle(), "Não foi possível verificar o email.");
+    if (existing) throw new Error("Já existe uma conta com este email nesta plataforma. Use a conta existente.");
+  }
   const created = must(await supabase.from("accounts").insert({
     platform_id: platformId,
     external_id: optional(form, "external_id") ?? `manual-${crypto.randomUUID().slice(0, 8)}`,
     name,
-    email: optional(form, "email")?.toLowerCase() ?? null,
+    email: contactEmail,
     plan_id: optional(form, "plan_id"),
     status: "active",
-  }).select("id").single(), "Não foi possível criar a conta (ID externo repetido?).");
+  }).select("id").single(), "Não foi possível criar a conta. Confira se o email ou ID externo já está cadastrado nesta plataforma.");
   await audit(supabase, { actor: email, action: "account.create", platformId, entity: "account", entityId: created.id, data: { name } });
   return "Conta criada.";
 });
