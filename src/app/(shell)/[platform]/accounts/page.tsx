@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InviteTeacher } from "@/components/invite-teacher";
 import { requireAdmin } from "@/lib/supabase/server";
 import { resolveScope } from "@/lib/platforms";
 import { chargesForPeriod, listAccounts, listPlans } from "@/lib/queries";
@@ -34,6 +35,7 @@ export default async function Accounts({ params, searchParams }: PageProps<"/[pl
   return (
     <>
       <PageHead eyebrow={platform?.name ?? "Todas as plataformas"} title="Contas" description={`${accounts.length} contas${connector ? ` · última sincronização ${relative(lastSync)}` : ""}`}>
+        {platform?.slug === "lessonara" && <InviteTeacher plans={plans.filter(p=>p.active && p.feature_tier).map(p=>({id:p.id,name:p.name}))}/>}
         {platform && connector && (
           <Form action={syncPlatformAccounts} className="flex flex-col items-end gap-1">
             <input type="hidden" name="platform_id" value={platform.id} />

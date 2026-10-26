@@ -290,3 +290,65 @@ export const retrySubscriptionChange = action(async ({ supabase }, form) => {
   const result = await runSubscriptionChanges(createServiceClient(), writeTeacherAccess);
   return result.failed ? "Reprocessamento concluído com pendências. Confira o motivo na conta." : "Troca reprocessada. Confira o plano e o histórico.";
 });
+
+export const inviteLessonaraTeacher = action(
+  async ({ supabase, email }, form) => {
+    const { inviteTeacher } = await import("@/lib/teacher-invitations");
+    const result = await inviteTeacher(supabase, email, {
+      name: text(form, "name"),
+      email: text(form, "email"),
+      planId: optional(form, "plan_id") ?? undefined,
+    });
+    return result.trackingPending
+      ? "Envio aceito pelo provedor. O registro do acompanhamento precisa ser revisado."
+      : "Convite enviado. O destinatário escolherá a própria senha.";
+  },
+);
+export const resendLessonaraInvitation = action(
+  async ({ supabase, email }, form) => {
+    const id = uuid(form, "account_id");
+    const account = must(
+      await supabase
+        .from("accounts")
+        .select("external_id,platform_id,name,email")
+        .eq("id", id)
+        .single(),
+      "Conta não encontrada.",
+    );
+    const platform = must(
+      await supabase
+        .from("platforms")
+        .select("slug")
+        .eq("id", account.platform_id)
+        .single(),
+      "Plataforma não encontrada.",
+    );
+    if (platform.slug !== "lessonara" || !account.email)
+      throw new Error("Esta conta não tem um email de professor do Lessonara.");
+    const { inviteTeacher, invitationClient } =
+      await import("@/lib/teacher-invitations");
+    const source = invitationClient();
+    const teacher = await source
+      .from("teachers")
+      .select("id,email")
+      .eq("id", account.external_id)
+      .maybeSingle();
+    if (
+      teacher.error ||
+      !teacher.data ||
+      teacher.data.email.toLowerCase() !== account.email.toLowerCase()
+    )
+      throw new Error(
+        "O vínculo com o professor precisa ser sincronizado antes do reenvio.",
+      );
+    const result = await inviteTeacher(
+      supabase,
+      email,
+      { name: account.name || "Professor(a)", email: account.email },
+      source,
+    );
+    return result.trackingPending
+      ? "Envio aceito. O acompanhamento precisa ser revisado."
+      : "Link enviado. O destinatário poderá definir uma nova senha.";
+  },
+);
