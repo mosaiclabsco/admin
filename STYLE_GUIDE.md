@@ -17,3 +17,5 @@ Use a identidade visual Mosaic Labs: logo oficial, fundo creme, azul #1464c0, co
 
 - Edição e criação de planos em `Overlay` modal; detalhes de auditoria em `Overlay` drawer. Não expandir formulários ou JSON dentro das linhas das tabelas. Dialog nativo mantém foco, Escape e retorno ao acionador; animação respeita movimento reduzido.
 - Trocas de assinatura sempre mostram a prévia proporcional e são agendadas para a próxima renovação. Não executar cobranças, créditos ou reembolsos pela prévia.
+
+- Feedback de formulários usa `Form` e `ToastHost`: sucesso/erro aparecem em notificação fixa, sem inserir texto ao lado dos botões nem deslocar o layout. Preservar valores, estado de envio e callbacks.

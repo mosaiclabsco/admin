@@ -212,3 +212,12 @@ h1, h2, .h1, .h2, .stat-value { font-family: var(--font-sans); }
 @keyframes overlay-enter { from { opacity:0;transform:translateY(8px); } to { opacity:1;transform:translateY(0); } }
 @keyframes drawer-enter { from { opacity:0;transform:translateX(calc(100% + 12px)); } to { opacity:1;transform:translateX(0); } }
 @media(prefers-reduced-motion:reduce) { .overlay[open],.overlay-drawer[open] {animation:none;} }
+
+.toast-stack { margin: 0; padding: 0; border: 0; background: transparent; left: auto; bottom: auto; overflow: visible; position: fixed; z-index: 200; top: 24px; right: 24px; width: min(420px, calc(100vw - 32px)); display: grid; gap: 12px; pointer-events: none; }
+.toast-notice { pointer-events: auto; display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 12px 36px #00000018; font-size: 14px; line-height: 1.5; }
+.toast-notice > svg { flex-shrink: 0; margin-top: 1px; }
+.toast-notice > span { flex: 1; color: var(--fg); overflow-wrap: anywhere; }
+.toast-success { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, var(--line)); }
+.toast-error { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
+.toast-notice button { display: grid; place-items: center; min-width: 32px; min-height: 32px; margin: -4px -4px -4px 0; border-radius: 8px; color: var(--muted); }
+.toast-notice button:hover { background: var(--sunken); }
