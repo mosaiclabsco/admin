@@ -28,6 +28,7 @@ beforeAll(async () => {
   for (const name of [
     "20261023000004_subscription_changes.sql",
     "20261027000008_immediate_subscription_changes.sql",
+    "20261027000009_subscription_execution_started.sql",
   ])
     await db.exec(
       await readFile(
@@ -275,6 +276,18 @@ it("allows cancellation before execution and prevents cancellation of a partiall
     "temporary failure",
   ]);
   await db.exec("set role authenticated;set test.role='authenticated'");
+  await expect(
+    db.query("select cancel_subscription_change($1)", [next]),
+  ).rejects.toThrow(/cannot be cancelled/);
+  await db.query("select retry_subscription_change($1)", [next]);
+  expect(
+    (
+      await db.query(
+        "select attempts,execution_started from subscription_changes where id=$1",
+        [next],
+      )
+    ).rows[0],
+  ).toEqual({ attempts: 0, execution_started: true });
   await expect(
     db.query("select cancel_subscription_change($1)", [next]),
   ).rejects.toThrow(/cannot be cancelled/);

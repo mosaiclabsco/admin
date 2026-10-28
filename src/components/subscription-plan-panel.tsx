@@ -311,40 +311,46 @@ export function SubscriptionPlanPanel({
                 </SubmitButton>
               </Form>
             )}
-          {pending.status !== "processing" && pending.attempts === 0 && (
-            <div className="mt-4">
-              <Overlay
-                title="Cancelar troca pendente?"
-                description="A troca ainda não começou. A assinatura e o acesso atuais serão mantidos. Nenhum pagamento será alterado."
-                trigger={
-                  <>
-                    <Icon name="x" className="h-4 w-4" />
-                    Cancelar troca
-                  </>
-                }
-              >
-                {(close) => (
-                  <Form action={cancelSubscriptionChange} onSuccess={close}>
-                    <input type="hidden" name="change_id" value={pending.id} />
-                    <div className="dialog-actions">
-                      <button
-                        type="button"
-                        className="btn-ghost"
-                        onClick={close}
-                      >
-                        <Icon name="arrow" className="h-4 w-4 rotate-180" />
-                        Voltar
-                      </button>
-                      <SubmitButton>
-                        <Icon name="x" className="h-4 w-4" />
-                        Cancelar troca
-                      </SubmitButton>
-                    </div>
-                  </Form>
-                )}
-              </Overlay>
-            </div>
-          )}
+          {pending.status !== "processing" &&
+            pending.attempts === 0 &&
+            !pending.execution_started && (
+              <div className="mt-4">
+                <Overlay
+                  title="Cancelar troca pendente?"
+                  description="A troca ainda não começou. A assinatura e o acesso atuais serão mantidos. Nenhum pagamento será alterado."
+                  trigger={
+                    <>
+                      <Icon name="x" className="h-4 w-4" />
+                      Cancelar troca
+                    </>
+                  }
+                >
+                  {(close) => (
+                    <Form action={cancelSubscriptionChange} onSuccess={close}>
+                      <input
+                        type="hidden"
+                        name="change_id"
+                        value={pending.id}
+                      />
+                      <div className="dialog-actions">
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          onClick={close}
+                        >
+                          <Icon name="arrow" className="h-4 w-4 rotate-180" />
+                          Voltar
+                        </button>
+                        <SubmitButton>
+                          <Icon name="x" className="h-4 w-4" />
+                          Cancelar troca
+                        </SubmitButton>
+                      </div>
+                    </Form>
+                  )}
+                </Overlay>
+              </div>
+            )}
         </div>
       )}
     </div>

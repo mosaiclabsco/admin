@@ -49,6 +49,7 @@ export function subscriptionQuote(
   };
 }
 export type SubscriptionChange = {
+  execution_started: boolean;
   application_mode: "now" | "renewal";
   id: string;
   account_id: string;

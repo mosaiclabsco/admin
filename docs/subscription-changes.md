@@ -11,3 +11,5 @@ Acesso no produto e assinatura comercial ficam em bancos separados. O acesso é 
 Nenhuma sessão é revogada. O professor recarrega o Lessonara para atualizar a interface; autorizações do servidor e do banco usam o plano atual. Os testes de banco usam PGlite com schemas descartáveis e executam as migrações reais, sem chamadas ao Supabase de produção. QA visual usa dados fictícios e não altera planos reais.
 
 Validação em 27/10/2026: 70 testes aprovados, lint e build Node 24.22.1 aprovados; QA visual do modal e do retry com dados fictícios. Migração aplicada ao banco do admin sem remover as funções existentes. Nenhuma conta real teve o plano alterado nesta validação.
+
+A migração 20261027000009 preserva execution_started mesmo quando um retry manual zera attempts. O cancelamento continua bloqueado após qualquer início de execução; o trigger cobre tanto o cron anterior quanto a execução imediata.

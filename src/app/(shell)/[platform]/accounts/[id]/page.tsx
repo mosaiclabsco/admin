@@ -33,7 +33,7 @@ export default async function AccountDetail({ params }: PageProps<"/[platform]/a
     supabase.from("charges").select("id,period,amount_cents,due_on,status,paid_at,paid_amount_cents,method,reference,settled_by").eq("account_id", id).order("period", { ascending: false }).limit(24),
     supabase.from("support_tickets").select("id,subject,status,last_message_at").eq("account_id", id).order("last_message_at", { ascending: false }).limit(10),
     supabase.from("audit_log").select("id,actor,action,created_at").eq("entity_id", id).order("created_at", { ascending: false }).limit(10),
-    supabase.from("subscription_changes").select("id,account_id,target_plan_id,target_name,new_price_cents,effective_on,application_mode,status,attempts,last_error,actor").eq("account_id", id).in("status", ["scheduled", "processing", "failed"]).maybeSingle(),
+    supabase.from("subscription_changes").select("id,account_id,target_plan_id,target_name,new_price_cents,effective_on,application_mode,execution_started,status,attempts,last_error,actor").eq("account_id", id).in("status", ["scheduled", "processing", "failed"]).maybeSingle(),
   ]);
   if (scheduled.error) throw new Error("Não foi possível carregar as trocas agendadas.");
   const today = todaySP();
