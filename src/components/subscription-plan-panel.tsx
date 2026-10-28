@@ -6,6 +6,7 @@ import { monthlyPrice } from "@/lib/billing";
 import { date, money, parseMoney } from "@/lib/format";
 import {
   subscriptionQuote,
+  initialSubscriptionChoice,
   type SubscriptionChange,
 } from "@/lib/subscriptions";
 import {
@@ -34,10 +35,13 @@ function ChangeForm({
   close: () => void;
 }) {
   const options = plans.filter((p) => p.active);
-  const [target, setTarget] = useState(
-    options.find((p) => p.id !== account.plan_id)?.id ?? options[0]?.id ?? "",
+  const initial = initialSubscriptionChoice(
+    plans,
+    account.plan_id,
+    account.price_override_cents,
   );
-  const [override, setOverride] = useState("");
+  const [target, setTarget] = useState(initial.target);
+  const [override, setOverride] = useState(initial.override);
   const [timing, setTiming] = useState("renewal");
   const [operation] = useState(() => crypto.randomUUID());
   const nextPlan = options.find((p) => p.id === target);
@@ -67,9 +71,15 @@ function ChangeForm({
             id="subscription-target"
             name="target_plan"
             value={target}
-            onChange={(e) => setTarget(e.target.value)}
+            onChange={(e) => {
+              setTarget(e.target.value);
+              setOverride("");
+            }}
             required
           >
+            <option value="" disabled>
+              Selecione um plano
+            </option>
             {options.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} · {money(p.price_cents)}/mês
@@ -205,7 +215,13 @@ function ChangeForm({
           <Icon name="x" className="h-4 w-4" />
           Cancelar
         </button>
-        <SubmitButton disabled={!quote || !target}>
+        <SubmitButton
+          disabled={
+            !quote ||
+            !target ||
+            (target === account.plan_id && nextPrice === oldPrice)
+          }
+        >
           <Icon
             name={timing === "now" ? "check" : "calendar"}
             className="h-4 w-4"

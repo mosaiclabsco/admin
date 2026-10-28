@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ReactNode, CSSProperties } from "react";
 import { Icon } from "./icon";
 import { monthLabel } from "@/lib/format";
 import { shiftPeriod } from "@/lib/billing";
@@ -33,7 +33,7 @@ export function TicketStatus({ status }: { status: string }) {
 
 export function PlatformTag({ platform }: { platform: { name: string; color: string } | null | undefined }) {
   if (!platform) return <span className="text-xs text-muted">—</span>;
-  return <span className="inline-flex items-center gap-1.5 text-xs text-muted"><span className="dot" style={{ background: platform.color }} />{platform.name}</span>;
+  return <span className="badge platform-tag" style={{ "--platform-color": platform.color } as CSSProperties}>{platform.name}</span>;
 }
 
 export function PageHead({ eyebrow, title, description, children }: { eyebrow?: string; title: string; description?: ReactNode; children?: ReactNode }) {

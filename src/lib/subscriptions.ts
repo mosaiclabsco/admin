@@ -62,3 +62,17 @@ export type SubscriptionChange = {
   target_name: string;
   actor: string;
 };
+
+export function initialSubscriptionChoice(
+  plans: { id: string; active: boolean }[],
+  currentId: string | null,
+  override: number | null,
+) {
+  return {
+    target: plans.some((plan) => plan.active && plan.id === currentId)
+      ? currentId!
+      : "",
+    override:
+      override === null ? "" : (override / 100).toFixed(2).replace(".", ","),
+  };
+}

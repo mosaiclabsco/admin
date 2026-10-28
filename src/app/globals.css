@@ -221,3 +221,10 @@ h1, h2, .h1, .h2, .stat-value { font-family: var(--font-sans); }
 .toast-error { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
 .toast-notice button { display: grid; place-items: center; min-width: 32px; min-height: 32px; margin: -4px -4px -4px 0; border-radius: 8px; color: var(--muted); }
 .toast-notice button:hover { background: var(--sunken); }
+
+.platform-tag { color: var(--fg); background: color-mix(in srgb, var(--platform-color) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--platform-color) 28%, var(--surface)); }
+.platform-tag::before { background: var(--platform-color); }
+.platform-details { display: grid; gap: 18px; font-size: 14px; }
+.platform-details dt { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.platform-details dd { margin: 0; }
+.charge-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
