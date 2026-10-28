@@ -9,6 +9,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invitationClient } from "./teacher-invitations";
 import { sendEmail } from "./email";
+import { supportAccessEmail } from "./email-templates";
 export function supportCodeHash(id: string, code: string) {
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!key) throw new Error("Confirmação de suporte indisponível.");
@@ -77,8 +78,7 @@ export async function requestSupport(
     throw new Error("Não foi possível registrar a solicitação de suporte.");
   await sendEmail({
     to: actor,
-    subject: "Confirme o acesso de suporte ao Lessonara",
-    text: `Seu código para acessar temporariamente o professor selecionado no admin no Lessonara é ${code}. Vale por 5 minutos, com até 5 tentativas. A sessão de suporte durará até 15 minutos. Se não solicitou, não compartilhe o código.`,
+    ...supportAccessEmail(code),
   });
   return id;
 }

@@ -19,12 +19,4 @@ export async function sendEmail(input: EmailInput) {
   return result.data.id;
 }
 
-const escape = (value: string) => value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-
-export function otpEmail(code: string) {
-  return {
-    subject: `Código de acesso: ${code}`,
-    text: `Seu código de acesso ao Mosaic Labs Admin: ${code}. Vale por 10 minutos e pode ser usado uma vez. Se não foi você, ignore este email.`,
-    html: `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f4f5f2;font-family:Arial,sans-serif;color:#1f2a27"><div style="max-width:480px;margin:32px auto;padding:32px;background:#fff;border-radius:14px"><p style="font-weight:bold;font-size:18px">mosaic labs <span style="color:#8a948f">admin</span></p><p>Use este código para entrar:</p><p style="font-size:34px;letter-spacing:8px;font-weight:bold">${escape(code)}</p><p style="color:#5f6b67;font-size:13px">Vale por 10 minutos e pode ser usado uma vez. Se não foi você, ignore este email.</p></div></body></html>`,
-  };
-}
+export { otpEmail } from "./email-templates";

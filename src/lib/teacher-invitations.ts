@@ -42,7 +42,7 @@ export function accessEmail(name: string, link: string, recovery: boolean) {
   return {
     subject,
     text: `Olá, ${name || "professor(a)"}!\n\n${intro}\n\n${link}\n\nEste link é de uso único. Para recuperação de senha, use em até 10 minutos após o envio. Se expirar, peça um novo ao responsável pelo convite. Sua senha será escolhida por você e não será enviada por email. Se não reconhece a solicitação, ignore esta mensagem.`,
-    html: `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:32px 16px;background:#edf2e9;font-family:Arial,sans-serif;color:#2b3e39"><div style="max-width:520px;margin:auto;background:white;border-radius:18px;overflow:hidden"><div style="padding:24px 32px;background:#f7f8fa"><img src="https://lessonara.mosaic-labs.co/brand/complete-logo.png" alt="Lessonara" width="162" height="36" style="display:block;border:0;width:162px;height:36px"></div><div style="padding:32px"><h1 style="font-size:24px;margin:0 0 24px">${recovery ? "Uma nova senha, escolhida por você." : "Bem-vindo ao seu espaço de ensino."}</h1><p>Olá, ${escape(name || "professor(a)")}!</p><p style="line-height:1.7">${intro}</p><p style="margin:28px 0"><a href="${escape(link)}" style="display:inline-block;background:#3e7163;color:white;text-decoration:none;border-radius:10px;padding:14px 22px;font-weight:bold">Definir minha senha</a></p><p style="font-size:13px;line-height:1.7;color:#66766e">Este link é de uso único. Para recuperação de senha, use em até 10 minutos após o envio. Se expirar, peça o reenvio. Sua senha será escolhida por você e não será enviada por email.</p><p style="font-size:12px;line-height:1.7;color:#66766e">Se não reconhece esta solicitação, ignore a mensagem.</p></div></div></body></html>`,
+    html: `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light"><style>:root{color-scheme:light only;supported-color-schemes:light}@media(prefers-color-scheme:dark){.email-page{background-color:#edf2e9!important;color:#2b3e39!important}.email-card{background-color:#fff!important;color:#2b3e39!important}}[data-ogsc] .email-card{background-color:#fff!important;color:#2b3e39!important}</style></head><body class="email-page" bgcolor="#edf2e9" style="color-scheme:light only;margin:0;padding:32px 16px;background:#edf2e9;font-family:Arial,sans-serif;color:#2b3e39"><div class="email-card" style="max-width:520px;margin:auto;background:white;border-radius:18px;overflow:hidden"><div style="padding:24px 32px;background:#f7f8fa"><img src="https://lessonara.mosaic-labs.co/brand/complete-logo.png" alt="Lessonara" width="162" height="36" style="display:block;border:0;width:162px;height:36px"></div><div style="padding:32px"><h1 style="font-size:24px;margin:0 0 24px">${recovery ? "Uma nova senha, escolhida por você." : "Bem-vindo ao seu espaço de ensino."}</h1><p>Olá, ${escape(name || "professor(a)")}!</p><p style="line-height:1.7">${intro}</p><p style="margin:28px 0"><a href="${escape(link)}" style="display:inline-block;background:#3e7163;color:white;text-decoration:none;border-radius:10px;padding:14px 22px;font-weight:bold">Definir minha senha</a></p><p style="font-size:13px;line-height:1.7;color:#66766e">Este link é de uso único. Para recuperação de senha, use em até 10 minutos após o envio. Se expirar, peça o reenvio. Sua senha será escolhida por você e não será enviada por email.</p><p style="font-size:12px;line-height:1.7;color:#66766e">Se não reconhece esta solicitação, ignore a mensagem.</p></div></div></body></html>`,
   };
 }
 export async function teacherInvitationStatus(
@@ -117,11 +117,18 @@ export async function inviteTeacher(
     .eq("email", email)
     .maybeSingle();
   if (target.error) throw new Error("Não foi possível consultar o professor.");
-  const linkedAccount = await db.from("accounts").select("id,external_id")
-    .eq("platform_id", platform.data.id).eq("email", email).maybeSingle();
-  if (linkedAccount.error) throw new Error("Não foi possível verificar o vínculo da conta.");
+  const linkedAccount = await db
+    .from("accounts")
+    .select("id,external_id")
+    .eq("platform_id", platform.data.id)
+    .eq("email", email)
+    .maybeSingle();
+  if (linkedAccount.error)
+    throw new Error("Não foi possível verificar o vínculo da conta.");
   if (linkedAccount.data && linkedAccount.data.external_id !== target.data?.id)
-    throw new Error("Já existe uma conta comercial com este email. Revise o vínculo antes de convidar o professor.");
+    throw new Error(
+      "Já existe uma conta comercial com este email. Revise o vínculo antes de convidar o professor.",
+    );
   if (target.data && selected.data) {
     const current = await readTeacherAccess(target.data.id);
     if (!current || current.platform_plan !== selected.data.feature_tier)
