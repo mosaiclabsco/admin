@@ -1,3 +1,4 @@
+import { SupportAccessPanel } from "@/components/support-access-panel";
 import Link from "next/link";
 import { TeacherInvitationPanel } from "@/components/teacher-invitation-panel";
 import { SubscriptionPlanPanel } from "@/components/subscription-plan-panel";
@@ -84,6 +85,7 @@ export default async function AccountDetail({ params }: PageProps<"/[platform]/a
 
         <div className="space-y-4 lg:col-span-2">
           {platform?.slug === "lessonara" && <TeacherInvitationPanel accountId={id} teacherId={account.external_id} />}
+          {platform?.slug === "lessonara" && <SupportAccessPanel accountId={id} />}
           {platform?.slug === "lessonara" && <TeacherAccessPanel accountId={id} teacherId={account.external_id} />}
           <section className="card table-wrap">
             <h2 className="h2 px-4 pt-4 pb-2">Cobranças</h2>
