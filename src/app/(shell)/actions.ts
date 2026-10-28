@@ -51,7 +51,7 @@ export const updateLessonaraAccess = action(async ({ supabase, email }, form) =>
   if (platform.slug !== "lessonara") throw new Error("Esta conta não pertence ao Lessonara.");
   const change = parseAccessChange(form, account.external_id);
   const currentAccess = await readTeacherAccess(account.external_id);
-  if (!currentAccess || change.plan !== currentAccess.platform_plan) throw new Error("Use Trocar plano para agendar a alteração na renovação.");
+  if (!currentAccess || change.plan !== currentAccess.platform_plan) throw new Error("Use Trocar plano para alterar a assinatura e o acesso.");
   await writeTeacherAccess(email, change);
   // The source transaction already recorded the authoritative audit. Local history is supplementary.
   const logged = await supabase.from("audit_log").insert({ actor: email, action: "lessonara.access.update", platform_id: account.platform_id, entity: "account", entity_id: id, data: { operation: change.operation, reason: change.reason, plan: change.plan, suspended: change.suspended } });
@@ -266,6 +266,8 @@ export const savePlatform = action(async ({ supabase, email }, form) => {
 export const scheduleSubscriptionChange = action(async ({ supabase }, form) => {
   const id = uuid(form, "id");
   const target = uuid(form, "target_plan");
+  const timing = text(form, "timing") || "renewal";
+  if (!["now", "renewal"].includes(timing)) throw new Error("Escolha quando aplicar a troca.");
   const operation = uuid(form, "operation");
   const rawOverride = optional(form, "next_override");
   const override = rawOverride === null ? null : parseMoney(rawOverride);
@@ -279,21 +281,34 @@ export const scheduleSubscriptionChange = action(async ({ supabase }, form) => {
     if (!/^\d+$/.test(text(form, key)) || !Number.isSafeInteger(value)) throw new Error("Prévia inválida. Reabra a troca.");
     return value;
   });
-  const result = await supabase.rpc("schedule_subscription_change", { p_account: id, p_plan: target, p_override: override, p_expected_current: ints[0], p_expected_new: ints[1], p_expected_day: ints[2], p_today: text(form, "quote_date"), p_operation: operation, p_source_revision: access?.access_revision ?? null, p_source_suspended: access?.access_suspended ?? null });
-  if (result.error) throw new Error(result.error.code === "40001" ? "Os valores ou o ciclo mudaram. Atualize a página e revise novamente." : "Não foi possível agendar. Confira se o plano está ativo e vinculado ao acesso, ou se já há uma troca pendente.");
+  const result = await supabase.rpc("request_subscription_change", { p_account: id, p_plan: target, p_override: override, p_expected_current: ints[0], p_expected_new: ints[1], p_expected_day: ints[2], p_today: text(form, "quote_date"), p_operation: operation, p_source_revision: access?.access_revision ?? null, p_source_suspended: access?.access_suspended ?? null, p_timing: timing });
+  if (result.error) throw new Error(result.error.code === "40001" ? "Os valores ou o ciclo mudaram. Atualize a página e revise novamente." : "Não foi possível registrar a troca. Confira se o plano está ativo e vinculado ao acesso, ou se já há uma troca pendente.");
+  if (typeof result.data !== "string" || !/^[0-9a-f-]{36}$/i.test(result.data)) throw new Error("Não foi possível confirmar o registro da troca.");
+  if (timing === "now") {
+    const service = createServiceClient();
+    try {
+      await runSubscriptionChanges(service, writeTeacherAccess, result.data);
+    } finally {
+      revalidatePath("/", "layout");
+    }
+    const state = await service.from("subscription_changes").select("status").eq("id", result.data).eq("account_id", id).single();
+    if (state.error || state.data?.status !== "applied") throw new Error("Troca registrada, mas a aplicação ainda está pendente. Confira o andamento na conta antes de tentar novamente.");
+    return "Plano aplicado agora. Recarregue o Lessonara para atualizar os recursos. Vencimento e sessões foram mantidos; nenhuma cobrança ou reembolso foi criado.";
+  }
   return "Troca agendada para a próxima renovação. Nenhum reembolso foi executado.";
 });
 
 export const cancelSubscriptionChange = action(async ({ supabase }, form) => {
   const result = await supabase.rpc("cancel_subscription_change", { p_id: uuid(form, "change_id") });
-  if (result.error) throw new Error("Não foi possível cancelar. A troca pode já estar sendo aplicada.");
+  if (result.error) throw new Error("Não foi possível cancelar. A aplicação pode já ter começado; confira o andamento e tente concluí-la.");
   return "Troca cancelada. O plano atual foi mantido.";
 });
 
 export const retrySubscriptionChange = action(async ({ supabase }, form) => {
-  const retry = await supabase.rpc("retry_subscription_change", { p_id: uuid(form, "change_id") });
+  const changeId = uuid(form, "change_id");
+  const retry = await supabase.rpc("retry_subscription_change", { p_id: changeId });
   if (retry.error) throw new Error("A troca ainda não venceu ou já está em processamento.");
-  const result = await runSubscriptionChanges(createServiceClient(), writeTeacherAccess);
+  const result = await runSubscriptionChanges(createServiceClient(), writeTeacherAccess, changeId);
   return result.failed ? "Reprocessamento concluído com pendências. Confira o motivo na conta." : "Troca reprocessada. Confira o plano e o histórico.";
 });
 
